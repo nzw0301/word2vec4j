@@ -11,54 +11,53 @@ import static java.util.stream.Collectors.toCollection;
 
 
 public class AliasSampler {
-    private final int K;
+    private final int numSampledClass;
     private List<Double> S;
     private List<Integer> A;
-    private final Random ran = new Random();
+    private final Random rand = new Random();
 
-    public AliasSampler(int K){
-        this.K = K;
-        ran.setSeed(7);
+    public AliasSampler(int numSampledClass){
+        this.numSampledClass = numSampledClass;
+        rand.setSeed(7);
     }
 
     public void buildSamplingTable(List<Double> unNormalizedProb){
-        this.S = new ArrayList<>(this.K);
-        this.A = Stream.generate(() -> 0).limit(this.K).collect(toCollection(ArrayList::new));
+        int low, high;
+        double v;
 
+        this.S = new ArrayList<>(this.numSampledClass);
+        this.A = Stream.generate(() -> 0).limit(this.numSampledClass).collect(toCollection(ArrayList::new));
         double denom = unNormalizedProb.stream().mapToDouble(f -> f.doubleValue()).sum();
 
-        double v;
-        int low, high;
+        Queue<Integer> higherBin = new ArrayDeque<>();
+        Queue<Integer> lowerBin = new ArrayDeque<>();
 
-        Queue<Integer> H = new ArrayDeque<>();
-        Queue<Integer> L = new ArrayDeque<>();
-
-        for(int i = 0; i < this.K; i++){
-            v = this.K*unNormalizedProb.get(i)/denom;
+        for(int i = 0; i < this.numSampledClass; i++){
+            v = this.numSampledClass * unNormalizedProb.get(i) / denom;
             this.S.add(v);
-            if(v > 1.){
-                H.add(i);
+            if (v > 1.) {
+                higherBin.add(i);
             }else{
-                L.add(i);
+                lowerBin.add(i);
             }
         }
 
-        while(L.size() > 0 && H.size() > 0){
-            low = L.remove();
-            high = H.remove();
+        while(lowerBin.size() > 0 && higherBin.size() > 0){
+            low = lowerBin.remove();
+            high = higherBin.remove();
             this.A.set(low, high);
             this.S.set(high, this.S.get(high)-1.+this.S.get(low));
-            if (this.S.get(high) < 1.){
-                L.add(high);
+            if (this.S.get(high) < 1.) {
+                lowerBin.add(high);
             }else{
-                H.add(high);
+                higherBin.add(high);
             }
         }
     }
 
     public int sample(){
-        int k = this.ran.nextInt(this.K);
-        if (this.S.get(k) > this.ran.nextDouble()){
+        int k = this.rand.nextInt(this.numSampledClass);
+        if (this.S.get(k) > this.rand.nextDouble()){
             return k;
         }else{
             return this.A.get(k);

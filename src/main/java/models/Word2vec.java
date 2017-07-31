@@ -23,47 +23,47 @@ abstract class Model{
 public final class Word2vec extends Model {
     private final int MAX_SIGMOID = 6;
     private final int SIGMOID_TABLE_SIZE = 1000;
-    private final double[] t_sigmoid = new double[SIGMOID_TABLE_SIZE];
+    private final double[] sigmoidTable = new double[SIGMOID_TABLE_SIZE];
     private final double power = 0.75;
-    private final int size;
-    private final String train;
-    private final String output;
+    private final int dimEmbeddings;
+    private final String trainFileName;
+    private final String outputFileName;
     private final double startingAlpha;
-    private final int window;
+    private final int maxWindowSize;
     private final double sample;
     private final int negative;
     private final int minCount;
     private final int numVocab;
     private final int numIteration = 1;
     private final Vocab vocab;
-    private final int trainWords;
+    private final int numTrainWords;
     private final Random rand = new Random();
     private final NegativeSampler negativeSampler;
-    private double[][] W;
-    private double[][] C;
+    private double[][] inputEmbeddings;
+    private double[][] contextEmbeddings;
 
-    public Word2vec(int size,
-                    String train,
+    public Word2vec(int dimEmbeddings,
+                    String trainFileName,
                     double alpha,
-                    int window,
+                    int maxWindowSize,
                     double sample,
                     int negative,
                     int minCount,
                     boolean useAlias4NS) throws IOException {
 
-        this.size = size;
-        this.train = train;
+        this.dimEmbeddings = dimEmbeddings;
+        this.trainFileName = trainFileName;
         this.startingAlpha = alpha;
-        this.window = window;
+        this.maxWindowSize = maxWindowSize;
         this.sample = sample;
         this.negative = negative;
         this.minCount = minCount;
         this.rand.setSeed(7);
 
-        this.output = train + ".vec";
-        this.vocab = new Vocab(this.train, this.minCount, this.sample);
-        this.numVocab = this.vocab.getVocabSize();
-        this.trainWords = this.vocab.getTrainWords();
+        this.outputFileName = this.trainFileName + ".vec";
+        this.vocab = new Vocab(this.trainFileName, this.minCount, this.sample);
+        this.numVocab = this.vocab.getNumVocab();
+        this.numTrainWords = this.vocab.getNumTrainWords();
 
         this.initSigmoidTable();
         initNet();
@@ -79,41 +79,42 @@ public final class Word2vec extends Model {
     private void initSigmoidTable(){
         double x;
         for (int i = 0; i < this.SIGMOID_TABLE_SIZE; i++){
-            x = ((double) i / SIGMOID_TABLE_SIZE * 2 - 1) * MAX_SIGMOID;
-            this.t_sigmoid[i] = 1. / (Math.exp(-x)+1.);
+            x = ((double) i / this.SIGMOID_TABLE_SIZE * 2 - 1) * this.MAX_SIGMOID;
+            this.sigmoidTable[i] = 1. / (Math.exp(-x)+1.);
         }
     }
 
     private void initNet(){
-        this.C = new double[this.numVocab][this.size];
-        this.W = new double[this.numVocab][this.size];
+        this.contextEmbeddings = new double[this.numVocab][this.dimEmbeddings];
+        this.inputEmbeddings = new double[this.numVocab][this.dimEmbeddings];
 
         for (int i = 0; i < this.numVocab; i++){
-            for (int j = 0; j < this.size; j++) {
-                this.W[i][j] = (this.rand.nextDouble()-0.5) / this.size;
+            for (int j = 0; j < this.dimEmbeddings; j++) {
+                this.inputEmbeddings[i][j] = (this.rand.nextDouble()-0.5) / this.dimEmbeddings;
             }
         }
     }
 
     @Override
     public void fit() throws IOException{
-        int target;
+        int targetWord;
         int label;
-        int b;
+        int windowSize;
         int wordCount = 0;
         int lastWordCount = 0;
         int wordCountActual = 0;
         int sentenceLength;
-        int w, c;
+        int inputWord;
+        int contextWordPosition;
         int lastWord;
         double grad;
+        double dotValue;
         double alpha = this.startingAlpha;
-        double[] wDelta = new double[this.size];
+        double[] wDelta = new double[this.dimEmbeddings];
         List<Integer> sentence = new ArrayList<>();
 
-
         for (int t = 0; t < this.numIteration; t++){
-            PushbackReader reader = new PushbackReader(new FileReader(this.train));
+            PushbackReader reader = new PushbackReader(new FileReader(this.trainFileName));
 
             while(true) {
                 // update learning rate
@@ -122,10 +123,10 @@ public final class Word2vec extends Model {
                     lastWordCount = wordCount;
 
                     alpha = Math.max(
-                            this.startingAlpha * (1 - wordCountActual / (double)(this.trainWords + 1)),
+                            this.startingAlpha * (1 - wordCountActual / (double)(this.numTrainWords + 1)),
                             this.startingAlpha * 0.0001
                     );
-                    System.out.printf("%.5f %.5f", (double)wordCount/this.trainWords, alpha);
+                    System.out.printf("%.5f %.5f", (double)wordCount/this.numTrainWords, alpha);
                 }
 
                 // EOF check
@@ -138,67 +139,77 @@ public final class Word2vec extends Model {
 
                 if (sentenceLength == 0) continue;
 
-                for (int sentencePosition = 0; sentencePosition < sentenceLength; sentencePosition++){
-                    b = this.rand.nextInt(this.window);
-                    w = sentence.get(sentencePosition);
+                for (int inputWordPosition = 0; inputWordPosition < sentenceLength; inputWordPosition++){
+                    windowSize = this.rand.nextInt(this.maxWindowSize);
+                    inputWord = sentence.get(inputWordPosition);
 
-                    for (int a = b; a < this.window*2+1-b; a++){
-                        if (a == this.window) continue;
-                        c = sentencePosition - this.window + a;
-                        if (c < 0) continue;
-                        if (c >= sentenceLength) continue;
+                    for (int a = windowSize; a < this.maxWindowSize*2+1-windowSize; a++){
+                        if (a == this.maxWindowSize) continue;
+                        contextWordPosition = inputWordPosition - this.maxWindowSize + a;
+                        if (contextWordPosition < 0) continue;
+                        if (contextWordPosition >= sentenceLength) continue;
 
-                        for (int i = 0; i < this.size; i++){
+                        for (int i = 0; i < this.dimEmbeddings; i++){
                             wDelta[i] = 0.;
                         }
 
                         for (int d = 0; d < this.negative + 1; d++){
                             if (d == 0) { // true context word
-                                target = sentence.get(c);
+                                targetWord = sentence.get(contextWordPosition);
                                 label = 1;
                             } else { // negative sampling
-                                target = this.negativeSampler.sample();
-                                if (target == w)continue; // skip negative sampled word if it equals input word
+                                targetWord = this.negativeSampler.sample();
+                                if (targetWord == inputWord) continue; // skip negative sampled word if it equals input word
                                 label = 0;
                             }
 
                             // dot
-                            double f = 0;
-                            for (int i = 0; i < this.size; i++){
-                                f += this.W[w][i]*this.C[target][i];
+                            dotValue = 0;
+                            for (int i = 0; i < this.dimEmbeddings; i++){
+                                dotValue += this.inputEmbeddings[inputWord][i]*this.contextEmbeddings[targetWord][i];
                             }
 
                             // gradient
-                            if (f > this.MAX_SIGMOID){
+                            if (dotValue > this.MAX_SIGMOID){
                                 grad = (label - 1) * alpha;
-                            }else if (f < -this.MAX_SIGMOID){
+                            }else if (dotValue < -this.MAX_SIGMOID){
                                 grad = label * alpha;
                             }else {
-                                grad = (label - t_sigmoid[(int)((f + MAX_SIGMOID) * (SIGMOID_TABLE_SIZE / MAX_SIGMOID / 2))])*alpha;
+                                grad = (label - sigmoidTable[(int)((dotValue + this.MAX_SIGMOID) * (this.SIGMOID_TABLE_SIZE / this.MAX_SIGMOID / 2))])*alpha;
                             }
 
-                            for (int i = 0; i < this.size; i++){
-                                wDelta[i]         += grad * this.C[target][i];
-                                this.C[target][i] += grad * this.W[w][i];
+                            for (int i = 0; i < this.dimEmbeddings; i++){
+                                wDelta[i] += grad * this.contextEmbeddings[targetWord][i];
+                                this.contextEmbeddings[targetWord][i] += grad * this.inputEmbeddings[inputWord][i];
                             }
                         }
-                        for (int i = 0; i < this.size; i++){
-                            this.W[w][i] += wDelta[i];
+                        for (int i = 0; i < this.dimEmbeddings; i++){
+                            this.inputEmbeddings[inputWord][i] += wDelta[i];
                         }
                     }
                 }
             }
+            reader.close();
         }
+    }
+
+    private static class Trainer implements Runnable {
+        // TODO: implementation of distributed learning
+
+        Trainer(){}
+
+        @Override
+        public void run(){ }
     }
 
     @Override
     public void output() throws IOException{
-        PrintWriter writer = new PrintWriter(this.output);
-        writer.println(this.numVocab + " " + this.size);
+        PrintWriter writer = new PrintWriter(this.outputFileName);
+        writer.println(this.numVocab + " " + this.dimEmbeddings);
         double[] vec;
         for(int wordId = 0; wordId < numVocab; wordId++){
             writer.print(this.vocab.getWord(wordId));
-            vec = this.W[wordId];
+            vec = this.inputEmbeddings[wordId];
             for(double v: vec){
                 writer.print(" " + v);
             }
@@ -208,8 +219,8 @@ public final class Word2vec extends Model {
     }
 
     public static void main(String[] args) throws IOException {
-        Word2vec w2v = new Word2vec(100, "src/main/resources/text8",
-                         0.025, 5, 1e-3, 5, 5, true);
+        Word2vec w2v = new Word2vec(128, "src/main/resources/text8",
+                         0.025, 5, 1e-4, 5, 10, false);
          w2v.fit();
          w2v.output();
     }

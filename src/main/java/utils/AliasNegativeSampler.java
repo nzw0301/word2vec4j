@@ -5,22 +5,22 @@ import java.util.List;
 
 
 public class AliasNegativeSampler implements NegativeSampler{
-    private AliasSampler alias;
+    private AliasSampler aliasSampler;
 
 
     public AliasNegativeSampler(Vocab vocab, double power){
-        int numVocab = vocab.getVocabSize();
-        this.alias = new AliasSampler(numVocab);
+        int numVocab = vocab.getNumVocab();
+        this.aliasSampler = new AliasSampler(numVocab);
         List<Double> prob = new ArrayList<>(numVocab);
 
-        for (int i = 0; i < numVocab; i++){
-            prob.add(Math.pow(vocab.getFreq(i), power));
+        for (int wordId = 0; wordId < numVocab; wordId++){
+            prob.add(Math.pow(vocab.getFreq(wordId), power));
         }
 
-        this.alias.buildSamplingTable(prob);
+        this.aliasSampler.buildSamplingTable(prob);
     }
 
     public int sample(){
-        return this.alias.sample();
+        return this.aliasSampler.sample();
     }
 }

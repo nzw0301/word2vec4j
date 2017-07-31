@@ -16,40 +16,40 @@ public class Vocab {
     private Map<String, Integer> word2index = new HashMap<>();
     private List<Word> index2word = new ArrayList<>();
     private final int minCount;
-    private int trainWords;
-    private final int VocabSize;
+    private int numTrainWords;
+    private final int numVocab;
     private final String EOS = "</s>";
     private ArrayList<Double> discardTable = new ArrayList<>();
 
 
-    public Vocab(String fname, int minCount) throws IllegalArgumentException, IOException {
+    public Vocab(String trainFileName, int minCount) throws IllegalArgumentException, IOException {
         this.minCount = minCount;
         if(this.minCount <= 0) {
-            throw new IllegalArgumentException("able to set only minCount positive value: " + this.minCount);
+            throw new IllegalArgumentException("Able to set only minCount positive value: " + this.minCount);
         }
         PushbackReader reader;
         try {
-            reader = new PushbackReader(new FileReader(fname));
+            reader = new PushbackReader(new FileReader(trainFileName));
         }catch (IOException e){
-            throw new IllegalArgumentException("Unable to load " + fname, e);
+            throw new IllegalArgumentException("Unable to load " + trainFileName, e);
         }
 
-        System.out.println("loading words: ");
+        System.out.println("Loading words: ");
         StringBuilder word = new StringBuilder();
         while (readWord(reader, word)){
             this.addVocab(word.toString());
         }
 
+        reader.close();
         this.sortVocab();
-        this.VocabSize = this.index2word.size();
-        System.out.println("the number of vocab is " + this.VocabSize);
-        System.out.println("the number of words is " + this.trainWords);
+        this.numVocab = this.index2word.size();
+        System.out.println("The number of vocab is " + this.numVocab);
+        System.out.println("The number of words is " + this.numTrainWords);
     }
 
     public Vocab(String fname, int minCount, double sample) throws IllegalArgumentException, IOException {
         this(fname, minCount);
         this.initDiscardTable(sample);
-
     }
 
     public boolean readWord(PushbackReader reader, StringBuilder word) throws IOException {
@@ -57,7 +57,7 @@ public class Vocab {
         int character;
 
         while ((character = reader.read()) != -1) {
-            if (character == '\t' || character  == ' ' || character  == '\n'){
+            if (character == '\t' || character  == ' ' || character == '\n'){
                 if(word.length() == 0){
                     if (character == '\n'){
                         word.append(this.EOS);
@@ -80,26 +80,26 @@ public class Vocab {
     public int readLine(PushbackReader reader, List<Integer> words, Random rand) throws IOException {
         words.clear();
         StringBuilder word = new StringBuilder();
-        int wordId;
         String token;
-        int numTokens = 0;
+        int wordId;
+        int numProcessedTokens = 0;
 
         while(this.readWord(reader, word)){
             token = word.toString();
             wordId = this.getWordId(token);
             if (wordId == -1) continue;
-            numTokens++;
+            numProcessedTokens++;
             if (this.discardTable.get(wordId) < rand.nextDouble()) continue; // skip sub-sampled word
             words.add(wordId);
+
             if (token.equals(this.EOS)) break;
             if (words.size() > this.MAX_SENTENCE_LENGTH) break;
         }
 
-        return numTokens;
+        return numProcessedTokens;
     }
 
     private void sortVocab(){
-        System.out.println("\nsorting");
         List<Word> words = new ArrayList<>(this.index2word);
         Collections.sort(words, new Comparator<Word>() {
             @Override
@@ -107,8 +107,8 @@ public class Vocab {
                 return Integer.compare(o2.getFreq(), o1.getFreq());
             }
         });
+
         this.index2word = words;
-        System.out.println("rebuild");
         for (int i = 0; i < this.index2word.size(); i++){
             if (this.minCount > this.index2word.get(i).getFreq()){
                 for (int j = this.index2word.size()-1; i <= j; j--){
@@ -118,11 +118,9 @@ public class Vocab {
                 break;
             }else{
                 this.word2index.replace(this.index2word.get(i).getWord(), i);
-                this.trainWords += this.index2word.get(i).getFreq();
-                System.out.print("\r #words" + this.trainWords);
+                this.numTrainWords += this.index2word.get(i).getFreq();
             }
         }
-        System.out.println();
     }
 
     private void addVocab(String word){
@@ -136,13 +134,18 @@ public class Vocab {
     }
 
     private void initDiscardTable(double sample){
-        for(int wordId = 0; wordId < this.VocabSize; wordId++){
-            double f = (double) this.getFreq(wordId) / this.trainWords;
+        double f;
+        for(int wordId = 0; wordId < this.numVocab; wordId++){
+            f = (double) this.getFreq(wordId) / this.numTrainWords;
             this.discardTable.add(
                     Math.sqrt(sample/f) + sample/f
             );
         }
     }
+
+    public int getNumTrainWords(){ return this.numTrainWords; }
+
+    public int getNumVocab(){ return this.numVocab; }
 
     public int getWordId(String word){
         return this.word2index.getOrDefault(word, -1);
@@ -159,10 +162,4 @@ public class Vocab {
             return null;
         }
     }
-
-    public int getTrainWords(){
-        return this.trainWords;
-    }
-
-    public int getVocabSize(){return this.VocabSize;}
 }

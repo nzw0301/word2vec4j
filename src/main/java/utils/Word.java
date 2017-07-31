@@ -1,7 +1,7 @@
 package utils;
 
 public class Word {
-    private String word;
+    private final String word;
     private int freq = 0;
 
     public Word(String word){

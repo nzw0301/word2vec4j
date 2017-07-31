@@ -64,11 +64,11 @@ public class VocabTest {
         this.createDummyFile();
         int minCount = 1;
         Vocab vocab = new Vocab(this.fname, minCount);
-        assertEquals(22, vocab.getTrainWords());
+        assertEquals(22, vocab.getNumTrainWords());
 
         minCount = 2;
         vocab = new Vocab(this.fname, minCount);
-        assertEquals(20, vocab.getTrainWords());
+        assertEquals(20, vocab.getNumTrainWords());
 
         this.deleteDummyFile();
     }
