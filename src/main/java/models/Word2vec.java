@@ -48,7 +48,8 @@ public final class Word2vec extends Model {
                     int negative,
                     int minCount,
                     int iter,
-                    boolean useAlias4NS) throws IOException {
+                    boolean useAlias4NS,
+                    boolean shareHidden) throws IOException {
 
         this.dimEmbeddings = dimEmbeddings;
         this.trainFileName = trainFileName;
@@ -64,7 +65,7 @@ public final class Word2vec extends Model {
         this.numIteration = iter;
 
         this.initSigmoidTable();
-        initNet();
+        initNet(shareHidden);
 
         if(useAlias4NS){
             this.negativeSampler = new AliasNegativeSampler(this.vocab, power);
@@ -82,14 +83,19 @@ public final class Word2vec extends Model {
         }
     }
 
-    private void initNet(){
-        this.contextEmbeddings = new double[this.numVocab][this.dimEmbeddings];
+    private void initNet(boolean shareHidden){
         this.inputEmbeddings = new double[this.numVocab][this.dimEmbeddings];
 
         for (int i = 0; i < this.numVocab; i++){
             for (int j = 0; j < this.dimEmbeddings; j++) {
                 this.inputEmbeddings[i][j] = (rand.nextDouble()-0.5) / this.dimEmbeddings;
             }
+        }
+
+        if (shareHidden){
+            this.contextEmbeddings = inputEmbeddings;
+        }else{
+            this.contextEmbeddings = new double[this.numVocab][this.dimEmbeddings];
         }
     }
 
@@ -225,7 +231,7 @@ public final class Word2vec extends Model {
 
     public static void main(String[] args) throws IOException {
         Word2vec w2v = new Word2vec(100, "src/main/resources/text8", 0.025,
-                5, 1e-4, 5, 15, 1,true);
+                5, 1e-4, 5, 15, 1,true, true);
          w2v.fit();
          w2v.output();
     }
