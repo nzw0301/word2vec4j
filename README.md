@@ -1,1 +1,1 @@
-# Java implementation of SkipGram with NegativeSampling
+# Java implementation of SkipGram/CBoW with NegativeSampling
