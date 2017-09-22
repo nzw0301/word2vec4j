@@ -24,8 +24,8 @@ public class Vocab {
 
     public Vocab(String trainFileName, int minCount) throws IllegalArgumentException, IOException {
         this.minCount = minCount;
-        if(this.minCount <= 0) {
-            throw new IllegalArgumentException("Able to set only minCount positive value: " + this.minCount);
+        if(minCount <= 0) {
+            throw new IllegalArgumentException("Able to set only minCount positive value: " + minCount);
         }
         PushbackReader reader;
         try {
@@ -37,14 +37,14 @@ public class Vocab {
         System.out.println("Loading words: ");
         StringBuilder word = new StringBuilder();
         while (readWord(reader, word)){
-            this.addVocab(word.toString());
+            addVocab(word.toString());
         }
 
         reader.close();
-        this.sortVocab();
-        this.numVocab = this.index2word.size();
-        System.out.println("The number of vocab is " + this.numVocab);
-        System.out.println("The number of words is " + this.numTrainWords);
+        sortVocab();
+        this.numVocab = index2word.size();
+        System.out.println("The number of vocab is " + numVocab);
+        System.out.println("The number of words is " + numTrainWords);
     }
 
     public Vocab(String fname, int minCount, double sample) throws IllegalArgumentException, IOException {
@@ -60,7 +60,7 @@ public class Vocab {
             if (character == '\t' || character  == ' ' || character == '\n'){
                 if(word.length() == 0){
                     if (character == '\n'){
-                        word.append(this.EOS);
+                        word.append(EOS);
                         return true;
                     }
                     continue;
@@ -89,18 +89,18 @@ public class Vocab {
             wordId = this.getWordId(token);
             if (wordId == -1) continue;
             numProcessedTokens++;
-            if (this.discardTable.get(wordId) < rand.nextDouble()) continue; // skip sub-sampled word
+            if (discardTable.get(wordId) < rand.nextDouble()) continue; // skip sub-sampled word
             words.add(wordId);
 
-            if (token.equals(this.EOS)) break;
-            if (words.size() > this.MAX_SENTENCE_LENGTH) break;
+            if (token.equals(EOS)) break;
+            if (words.size() > MAX_SENTENCE_LENGTH) break;
         }
 
         return numProcessedTokens;
     }
 
     private void sortVocab(){
-        List<Word> words = new ArrayList<>(this.index2word);
+        List<Word> words = new ArrayList<>(index2word);
         Collections.sort(words, new Comparator<Word>() {
             @Override
             public int compare(Word o1, Word o2) {
@@ -109,55 +109,54 @@ public class Vocab {
         });
 
         this.index2word = words;
-        for (int i = 0; i < this.index2word.size(); i++){
-            if (this.minCount > this.index2word.get(i).getFreq()){
-                for (int j = this.index2word.size()-1; i <= j; j--){
-                    this.word2index.remove(this.index2word.get(j).getWord());
-                    this.index2word.remove(j);
+        for (int i = 0; i < index2word.size(); i++){
+            if (minCount > index2word.get(i).getFreq()){
+                for (int j = index2word.size()-1; i <= j; j--){
+                    word2index.remove(index2word.get(j).getWord());
+                    index2word.remove(j);
                 }
                 break;
             }else{
-                this.word2index.replace(this.index2word.get(i).getWord(), i);
-                this.numTrainWords += this.index2word.get(i).getFreq();
+                word2index.replace(index2word.get(i).getWord(), i);
+                numTrainWords += index2word.get(i).getFreq();
             }
         }
     }
 
     private void addVocab(String word){
-        int wordId = this.word2index.getOrDefault(word, this.word2index.size());
-        if (wordId == this.word2index.size()){
-            this.index2word.add(new Word(word));
-            this.word2index.put(word, wordId);
+        int wordId = word2index.getOrDefault(word, word2index.size());
+        if (wordId == word2index.size()){
+            index2word.add(new Word(word));
+            word2index.put(word, wordId);
         }else {
-            this.index2word.get(wordId).incrementFreq();
+            index2word.get(wordId).incrementFreq();
         }
     }
 
     private void initDiscardTable(double sample){
         double f;
-        for(int wordId = 0; wordId < this.numVocab; wordId++){
-            f = (double) this.getFreq(wordId) / this.numTrainWords;
-            this.discardTable.add(
-                    Math.sqrt(sample/f) + sample/f
+        for(int wordId = 0; wordId < numVocab; wordId++){
+            f = (double) getFreq(wordId) / numTrainWords;
+            discardTable.add(Math.sqrt(sample/f) + sample/f
             );
         }
     }
 
-    public int getNumTrainWords(){ return this.numTrainWords; }
+    public int getNumTrainWords(){ return numTrainWords; }
 
-    public int getNumVocab(){ return this.numVocab; }
+    public int getNumVocab(){ return numVocab; }
 
     public int getWordId(String word){
-        return this.word2index.getOrDefault(word, -1);
+        return word2index.getOrDefault(word, -1);
     }
 
     public int getFreq(int wordId){
-        return this.index2word.get(wordId).getFreq();
+        return index2word.get(wordId).getFreq();
     }
 
     public String getWord(int wordId){
         if(wordId >= 0 && wordId < word2index.size()){
-            return this.index2word.get(wordId).getWord();
+            return index2word.get(wordId).getWord();
         }else{
             return null;
         }

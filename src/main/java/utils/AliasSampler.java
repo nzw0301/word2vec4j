@@ -25,16 +25,16 @@ public class AliasSampler {
         int low, high;
         double v;
 
-        this.S = new ArrayList<>(this.numSampledClass);
-        this.A = Stream.generate(() -> 0).limit(this.numSampledClass).collect(toCollection(ArrayList::new));
-        double denom = unNormalizedProb.stream().mapToDouble(f -> f.doubleValue()).sum();
+        this.S = new ArrayList<>(numSampledClass);
+        this.A = Stream.generate(() -> 0).limit(numSampledClass).collect(toCollection(ArrayList::new));
+        final double denom = unNormalizedProb.stream().mapToDouble(f -> f.doubleValue()).sum();
 
         Queue<Integer> higherBin = new ArrayDeque<>();
         Queue<Integer> lowerBin = new ArrayDeque<>();
 
         for(int i = 0; i < this.numSampledClass; i++){
-            v = this.numSampledClass * unNormalizedProb.get(i) / denom;
-            this.S.add(v);
+            v = numSampledClass * unNormalizedProb.get(i) / denom;
+            S.add(v);
             if (v > 1.) {
                 higherBin.add(i);
             }else{
@@ -45,9 +45,9 @@ public class AliasSampler {
         while(lowerBin.size() > 0 && higherBin.size() > 0){
             low = lowerBin.remove();
             high = higherBin.remove();
-            this.A.set(low, high);
-            this.S.set(high, this.S.get(high)-1.+this.S.get(low));
-            if (this.S.get(high) < 1.) {
+            A.set(low, high);
+            S.set(high, S.get(high) -1. + S.get(low));
+            if (S.get(high) < 1.) {
                 lowerBin.add(high);
             }else{
                 higherBin.add(high);
@@ -56,8 +56,8 @@ public class AliasSampler {
     }
 
     public int sample(){
-        int k = this.rand.nextInt(this.numSampledClass);
-        if (this.S.get(k) > this.rand.nextDouble()){
+        int k = rand.nextInt(numSampledClass);
+        if (S.get(k) > rand.nextDouble()){
             return k;
         }else{
             return this.A.get(k);
@@ -67,7 +67,7 @@ public class AliasSampler {
     public List<Integer> samples(int numSamples){
         List<Integer> samples = new ArrayList<>(numSamples);
         for(int i = 0; i < numSamples; i++){
-            samples.add(this.sample());
+            samples.add(sample());
         }
         return samples;
     }

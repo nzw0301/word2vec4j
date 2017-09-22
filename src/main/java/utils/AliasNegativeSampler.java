@@ -17,10 +17,10 @@ public class AliasNegativeSampler implements NegativeSampler{
             prob.add(Math.pow(vocab.getFreq(wordId), power));
         }
 
-        this.aliasSampler.buildSamplingTable(prob);
+        aliasSampler.buildSamplingTable(prob);
     }
 
     public int sample(){
-        return this.aliasSampler.sample();
+        return aliasSampler.sample();
     }
 }

@@ -6,19 +6,19 @@ public class Word {
 
     public Word(String word){
         this.word = word;
-        this.freq++;
+        freq++;
     }
 
     protected void incrementFreq(){
-        this.freq++;
+        freq++;
     }
 
     public String getWord(){
-        return this.word;
+        return word;
     }
 
     public int getFreq(){
-        return this.freq;
+        return freq;
     }
 
 }

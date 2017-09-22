@@ -10,8 +10,8 @@ public class ArrayNegativeSampler implements NegativeSampler{
     private final Random rand = new Random();
 
     public ArrayNegativeSampler(Vocab vocab, double power){
-        this.negativeTable = new ArrayList<>(this.NEGATIVE_TABLE_SIZE);
-        int numVocab = vocab.getNumVocab();
+        this.negativeTable = new ArrayList<>(NEGATIVE_TABLE_SIZE);
+        final int numVocab = vocab.getNumVocab();
 
         double denom = 0.;
         for (int i = 0; i < numVocab; i++){
@@ -23,15 +23,15 @@ public class ArrayNegativeSampler implements NegativeSampler{
 
         for (int wordId = 0; wordId < numVocab; wordId++){
             numerator = Math.pow(vocab.getFreq(wordId), power);
-            for (int j = 0; j < numerator*this.NEGATIVE_TABLE_SIZE/denom; j++){
-                this.negativeTable.add(negativeTableIndex, wordId);
+            for (int j = 0; j < numerator*NEGATIVE_TABLE_SIZE/denom; j++){
+                negativeTable.add(negativeTableIndex, wordId);
                 negativeTableIndex++;
             }
         }
     }
 
     public int sample(){
-        return this.negativeTable.get(this.rand.nextInt(this.NEGATIVE_TABLE_SIZE));
+        return negativeTable.get(rand.nextInt(NEGATIVE_TABLE_SIZE));
     }
 }
 
