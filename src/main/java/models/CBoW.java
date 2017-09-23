@@ -22,7 +22,6 @@ public final class CBoW extends Word2Vec {
         super(dimEmbeddings, trainFileName, alpha, maxWindowSize, sample, negative, minCount, iter, useAlias4NS, shareHidden);
     }
 
-
     @Override
     public void fit() throws IOException{
         int label;

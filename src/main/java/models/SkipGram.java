@@ -22,7 +22,6 @@ public final class SkipGram extends Word2Vec {
         super(dimEmbeddings, trainFileName, alpha, maxWindowSize, sample, negative, minCount, iter, useAlias4NS, shareHidden);
     }
 
-
     @Override
     public void fit() throws IOException{
         int targetWord;
@@ -109,7 +108,7 @@ public final class SkipGram extends Word2Vec {
 
     public static void main(String[] args) throws IOException {
         Word2Vec w2v = new SkipGram(100, "src/main/resources/text8", 0.025,
-                5, 1e-4, 15, 15, 1, true, false);
+                5, 1e-4, 5, 15, 1, true, false);
          w2v.fit();
          w2v.output();
     }
