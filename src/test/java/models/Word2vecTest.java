@@ -3,13 +3,13 @@ package models;
 import org.junit.Test;
 import utils.VocabTest;
 
-public class Word2vecTest {
+public class Word2VecTest {
     @Test
     public void fit() throws Exception {
         VocabTest vocabTest = new utils.VocabTest();
         vocabTest.createDummyFile();
 
-        Word2vec w2v = new Word2vec(
+        Word2Vec w2v = new Word2Vec(
                 10,
                 "test.txt",
                 0.025,
